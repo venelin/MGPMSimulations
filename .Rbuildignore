@@ -1,3 +1,5 @@
-^data-raw$
+^data-raw/Results_t4$
+^data-raw/ResultsTestData_t2$
+^data-raw/GenerateFigures_files$
 ^.*\.Rproj$
 ^\.Rproj\.user$

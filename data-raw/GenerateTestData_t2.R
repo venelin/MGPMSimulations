@@ -15,14 +15,14 @@ simulatedModels <- SimulatedModels()
 argsMixedGaussian_SimulatedModels <- ArgsMixedGaussian_SimulatedModels()
 
 
-# We overwrite the limits for the model parameters, setting them to narrower sub-region
-# of the limits specified in TestPCMFit/GeneratePCMModels. This prevents generating
-# data for which some of the transition covariance matrices are singular due to
-# too extreme random parameters. Note that these limits have been chosent to be adequate with
-# the time-scale of the trees (all trees are of depth 166.2)
+# We overwrite the limits for the model parameters. This
+# prevents generating data for which some of the transition covariance matrices
+# are singular due to too extreme random parameters. Note that these limits have
+# been chosent to be adequate with the time-scale of the trees (all trees are of
+# depth 166.2)
 
-# these options will affect the H matrix, so that we don't have to specify it explicitly
-# in the functions below
+# these options will affect the H matrix, so that we don't have to specify it
+# explicitly in the functions below
 options(PCMBase.ParamValue.LowerLimit = -4,
         PCMBase.ParamValue.UpperLimit = 4,
         PCMBase.ParamValue.LowerLimit.NonNegativeDiagonal = .1)

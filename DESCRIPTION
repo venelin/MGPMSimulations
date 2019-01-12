@@ -5,9 +5,10 @@ Version: 0.1.0
 Authors@R: c(person("Venelin", "Mitov", email = "vmitov@gmail.com",
                     role = c("aut", "cre", "cph")))
 Maintainer: Venelin Mitov <vmitov@gmail.com>
-Description: Contains the R-scripts and the generated data-files for the article
-    Automatic Generation of Evolutionary Hypotheses using Mixed Gaussian 
-    Phylogenetic Models.
+Description: Contains the R-scripts and the generated data-files for the 
+    simulatino tests in the article 'Automatic Generation of Evolutionary 
+    Hypotheses using Mixed Gaussian Phylogenetic Models'.
 License: GPL 3.0
 Encoding: UTF-8
 LazyData: true
+RoxygenNote: 6.1.1
