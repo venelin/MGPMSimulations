@@ -1,5 +1,8 @@
-^data-raw/Results_t4$
-^data-raw/ResultsTestData_t2$
-^data-raw/GenerateFigures_files$
+^README\.Rmd$
+^data-raw/.*\.pdf$
+^data-raw/Results.*$
+^data-raw/data-old$
+^data-raw/Analysis.*$
+^data-raw/.*\.RData
 ^.*\.Rproj$
 ^\.Rproj\.user$
