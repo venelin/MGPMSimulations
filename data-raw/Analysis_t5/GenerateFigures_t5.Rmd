@@ -1,0 +1,132 @@
+---
+title: "GeneratedFigures"
+author: "Venelin Mitov"
+date: "3 Jan 2018"
+output: pdf_document
+keep_md: true
+---
+
+```{r setup, include=FALSE}
+library(PCMBase)
+library(PCMFit)
+library(ggtree)
+library(ggplot2)
+library(data.table)
+library(fpc)
+library(knitr)
+library(rmarkdown)
+library(MGPMSimulations)
+
+
+PCMFit::GeneratePCMModelTypes()
+
+opts_chunk$set(dev='pdf', 
+               #results="hide",
+               warning=FALSE,
+               dev.args=list(
+                 family="ArialMT", 
+                 pointsize=10,
+                 colormodel='rgb'
+               ),
+               dpi=600, bg='white')
+
+options(PCMBase.Value.NA = -1e20)
+options(PCMBase.Lmr.mode = 11)
+
+options(PCMBase.Threshold.SV = 1e-6)
+
+# for 10 simulations there was an eigenvalue below the threshold of 1e-5 for the
+# variance covariance transition matrix on 1 node. To calculate the likelihood
+# and AIC for these 10 simulations we set the threshold to a more tolerant value.
+# In the inference, the threshold will be left as per defaul (i.e. 1e-5).
+options(PCMBase.Threshold.EV = 1e-7)
+#options(PCMBase.Threshold.EV = 1e-5)
+
+options(PCMBase.Skip.Singular = FALSE)
+options(PCMBase.Threshold.Skip.Singular = 1e-4)
+
+
+
+evalFig7.2 <- FALSE
+evalFig7.3 <- TRUE
+```
+
+# Collect inferred models
+
+Here, we extract the inferred model and regimes and add them as columns to the testData_t5 data.table. 
+
+
+```{r}
+ids <- testData_t5[1:256, list(id = min(.I), .N), keyby=list(treeType, treeSize, numClusters)][, sort(id)]
+
+for(id in ids) {
+  print(data.table(
+    id = id,
+    type = testData_t5$treeType[[id]], 
+    size = testData_t5$treeSize[[id]],
+    numRegimes = testData_t5$numClusters[[id]]))
+  tree <- testData_t5$treeWithRegimes[[id]]
+  print(PCMTreeDtNodeRegimes(tree)[endNode <= PCMTreeNumTips(tree), .N, keyby=regime])
+}
+
+```
+
+```{r count-num-partitions-x-MGPMs, eval=FALSE}
+ids <- testData_t5[1:256, list(id = min(.I), .N), keyby=list(treeType, treeSize)][, sort(id)]
+
+dtNumAllPartitions <- rbindlist(lapply(ids, function(id) {
+  data.table(
+    id = id,
+    type = testData_t5$treeType[[id]], 
+    size = testData_t5$treeSize[[id]],
+    P18 = data.table(a=sapply(PCMTreeListAllPartitions(
+      testData_t5$tree[[id]], 18), length) + 1)[
+        , .N, keyby=a][, sum(N*6^a)],
+    P19 = data.table(a=sapply(PCMTreeListAllPartitions(
+      testData_t5$tree[[id]], 19), length) + 1)[
+        , .N, keyby=a][, sum(N*6^a)],
+    P20 = data.table(a=sapply(PCMTreeListAllPartitions(
+      testData_t5$tree[[id]], 20), length) + 1)[
+        , .N, keyby=a][, sum(N*6^a)],
+    P21 = data.table(a=sapply(PCMTreeListAllPartitions(
+      testData_t5$tree[[id]], 21), length) + 1)[
+        , .N, keyby=a][, sum(N*6^a)],
+    P22 = data.table(a=sapply(PCMTreeListAllPartitions(
+      testData_t5$tree[[id]], 22), length) + 1)[
+        , .N, keyby=a][, sum(N*6^a)],
+    P23 = data.table(a=sapply(PCMTreeListAllPartitions(
+      testData_t5$tree[[id]], 23), length) + 1)[
+        , .N, keyby=a][, sum(N*6^a)]
+  )
+}))
+
+save(dtNumAllPartitions, file = "dtNumAllPartitions.RData")
+```
+
+```{r}
+load("dtNumAllPartitions.RData")
+dtNumAllPartitions
+```
+
+
+```{r table-summary-sim-results-t5, eval=FALSE}
+load("../data-raw/ResultsTestData_t5/TestResultData_t5.RData")
+summaryTable <- testResultData[, {
+  maskTests <- !is.na(fpr) & !is.na(tpr)
+  numTests <- sum(maskTests)
+  list(
+    `#tests`=numTests, 
+    `Better AIC` = sum(AIC_Final[maskTests] - AIC_True[maskTests] <= 0)/numTests, 
+    fpr=sum(fpr[maskTests])/numTests, 
+    #`SE(fpr)`=sd(fpr[maskTests])/sqrt(numTests),
+    tpr=sum(tpr[maskTests])/numTests#, 
+    #`SE(tpr)`=sd(tpr[maskTests])/sqrt(numTests)
+    )
+},
+keyby=list(Crit.=crit2, N=factor(treeSize, levels=c("N=80", "N=159", "N=318", "N=638"), labels=c(80, 159, 318, 638)), 
+           `#regimes`=as.integer(numClusters),
+           `Tree-type`=factor(treeType, levels=c("ultrametric", "non-ultrametric")))][Crit. %in% c("Cluster", "OU process", "Correlated traits", "NonDiagonal H", "Asymmetric H")]
+print.xtable(xtable(summaryTable), comment=FALSE, include.rownames = FALSE)
+
+```
+

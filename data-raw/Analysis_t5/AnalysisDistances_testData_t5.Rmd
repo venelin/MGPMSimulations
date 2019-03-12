@@ -1,0 +1,1122 @@
+---
+title: "Distances t5"
+author: "Venelin Mitov"
+date: "1/22/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(PCMBase)
+library(PCMFit)
+library(MGPMSimulations)
+library(data.table)
+library(rmarkdown)
+library(knitr)
+library(ggplot2)
+library(scales)
+
+opts_chunk$set(dev='pdf', 
+               #results="hide",
+               warning=FALSE,
+               dev.args=list(
+                 family="ArialMT", 
+                 pointsize=10,
+                 colormodel='rgb'
+               ),
+               dpi=600, bg='white')
+
+options(PCMBase.Value.NA = -1e20)
+options(PCMBase.Lmr.mode = 11)
+options(PCMBase.Threshold.EV = 1e-7)
+
+options(width = 120)
+```
+
+```{r fig-sim-trees-t5, fig.width=9, fig.height=9, eval = FALSE}
+ids <- testData_t5[, list(id = min(.I), .N), keyby=list(treeType, treeSize, numClusters)][, sort(id)]
+
+treeTypesShort <- c(`non-ultrametric` = "Non-ultram.", `ultrametric` = "Ultram.")
+plList <- lapply(ids, function(id) {
+  PCMTreePlot(PCMTree(testData_t5$treeWithRegimes[[id]]), layout="fan", open.angle=2, size=.25) +
+    ggtitle(paste0(LETTERS[match(id, ids)], "  ",
+                   treeTypesShort[testData_t5$treeType[[id]]], " / ", 
+                   testData_t5$treeSize[[id]], " / ",
+                   "R=", testData_t5$numClusters[[id]])) +
+    theme(title = element_text(size = 9))
+})
+
+cowplot::plot_grid(plotlist = plList, nrow = 4, ncol = 4)
+```
+
+```{r fig-scatter-plots-simulations-t5, echo=FALSE, fig.width=9, fig.height=11, eval=FALSE}
+testData_t5_fitted <- MGPMSimulations::testData_t5[testData_t5_fittedIds]
+
+
+data <- rbindlist(lapply(1:nrow(testData_t5_fitted), function(i) {
+  pl <- PCMPlotTraitData2D(
+    X = testData_t5_fitted$X[[i]][, 1:PCMTreeNumTips(testData_t5_fitted$treeWithRegimes[[i]])],
+    tree = PCMTree(testData_t5_fitted$treeWithRegimes[[i]]))
+  cbind(pl$data, testData_t5_fitted[i, list(
+    rowId = c(IdGlob, rep(as.integer(NA), nrow(pl$data)-1)),
+    x0 = c(1.0, rep(as.double(NA), nrow(pl$data) - 1)), 
+    y0 = c(-1.0, rep(as.double(NA), nrow(pl$data) - 1)), 
+    treeType, treeSize, numClusters, clusterNodes, 
+    mapping, 
+    logLik = c(logLik[[1]], rep(as.double(NA), nrow(pl$data)-1)),
+    AIC = c(AIC[[1]], rep(as.double(NA), nrow(pl$data)-1)), 
+    nobs = c(nobs[[1]], rep(as.integer(NA), nrow(pl$data)-1)), 
+    df = c(df[[1]], rep(as.integer(NA), nrow(pl$data)-1)), 
+    IdMappingForClustering, IdParamForMapping, IdSimulationForParam)])
+}))
+
+data[, labLogLik:=sapply(logLik, function(ll) if(is.na(ll)) as.character(NA) else paste0("L: ", round(ll, 2)))]
+data[, labAIC:=sapply(AIC, function(a) if(is.na(a)) as.character(NA) else paste0("AIC: ", round(a, 2)))]
+
+data[, IdMappingLETTERS:=
+       paste0(IdMappingForClustering, ". ", 
+              sapply(mapping, function(m) do.call(paste0, as.list(LETTERS[m]))))]
+
+ScatterPlotSimulation <- function(dt) {
+  treeTypesShort <- c(`non-ultrametric` = "Non-ultram.", `ultrametric` = "Ultram.")
+
+  if(nrow(dt) >0 ) {
+    ggplot(dt, aes(x, y)) + 
+    geom_point(aes(color = regime), size = .1, alpha = .5) +
+    geom_point(aes(x=x0, y=y0)) +
+    scale_x_continuous(limits =  c(-15, 15)) +
+    scale_y_continuous(limits =  c(-15, 15)) +
+    geom_label(aes(x=-14, y=12, label = rowId), hjust = "left") +
+    geom_text(aes(x=-13, y=6, label = labLogLik), size = 2.5, hjust = "left") +
+    facet_grid(paste0("Parameter ", IdParamForMapping)~paste0("Simulation ", IdSimulationForParam)) +
+    theme_bw() + 
+    ggtitle(label = paste0(
+      treeTypesShort[dt$treeType[[1L]]], " tree",  
+      " / ", dt$treeSize[[1L]],
+      " / R=", dt$numClusters[[1L]],
+      " / Mapping ", dt$IdMappingLETTERS[[1L]]))
+  } else {
+    NULL
+  }
+}
+
+listPlots <- c(
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "ultrametric" & treeSize=="N=80" & numClusters==2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "ultrametric" & treeSize=="N=80" & numClusters > 2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "non-ultrametric" & treeSize=="N=80" & numClusters==2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "non-ultrametric" & treeSize=="N=80" & numClusters>2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "ultrametric" & treeSize=="N=159" & numClusters == 2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "ultrametric" & treeSize=="N=159" & numClusters > 2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "non-ultrametric" & treeSize=="N=159" & numClusters==2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "non-ultrametric" & treeSize=="N=159" & numClusters>2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "ultrametric" & treeSize=="N=318" & numClusters == 2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "ultrametric" & treeSize=="N=318" & numClusters > 2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+  
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "non-ultrametric" & treeSize=="N=318" & numClusters==2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "non-ultrametric" & treeSize=="N=318" & numClusters>2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "ultrametric" & treeSize=="N=638" & numClusters == 2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "ultrametric" & treeSize=="N=638" & numClusters > 2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "non-ultrametric" & treeSize=="N=638" & numClusters==2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}),
+
+lapply(1:4, function(i) {
+  dt <- data[treeType == "non-ultrametric" & treeSize=="N=638" & numClusters>2 & IdMappingForClustering == i]
+  ScatterPlotSimulation(dt)
+}))
+
+listPlots <- listPlots[!sapply(listPlots, is.null)]
+for(p in listPlots) {
+  print(p)
+}
+```
+
+```{r dtSimulationFits, eval = TRUE}
+dtSimulationFits <- rbindlist(list(
+  fits_TrueModels_t5[
+    , cbind(.SD, data.table(fitType2   =   "MGPM A-F TRUE MLE q=n.a."      ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = 0))],
+  fits_MGPM_A_F_all_AIC_t5[
+    , cbind(.SD, data.table(fitType2   =   "MGPM A-F FULL AIC q=20"      ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = score - 
+                sapply(IdGlob, function(idGlob) {
+                  fits_TrueModels_t5[IdGlob == idGlob, AIC[[1]]]
+                })))],
+  fits_MGPM_A_F_all_AIC2_t5[
+    , cbind(.SD, data.table(fitType2   =   "MGPM A-F FULL AIC2 q=20"      ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = score - 
+                sapply(IdGlob, function(idGlob) {
+                  fits_TrueModels_t5[IdGlob == idGlob, AIC[[1]]-length(unique(clusterNodes[[1]]))]
+                })))],
+  fits_MGPM_A_F_best_clade_RR_AIC_t5[
+    , cbind(.SD, data.table(fitType2   =   "MGPM A-F RCP B.1 RR AIC q=20"      ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = score - 
+                sapply(IdGlob, function(idGlob) {
+                  fits_TrueModels_t5[IdGlob == idGlob, AIC[[1]]]
+                })))],
+  fits_MGPM_A_F_best_clade_2_RR_AIC_t5[
+    , cbind(.SD, data.table(fitType2   =   "MGPM A-F RCP B.2 RR AIC q=20"      ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = score - 
+                sapply(IdGlob, function(idGlob) {
+                  fits_TrueModels_t5[IdGlob == idGlob, AIC[[1]]]
+                })))],
+  fits_MGPM_A_F_best_clade_2_AIC_t5[
+    , cbind(.SD, data.table(fitType2   =   "MGPM A-F RCP B.2 AIC q=20"      ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = score - 
+                sapply(IdGlob, function(idGlob) {
+                  fits_TrueModels_t5[IdGlob == idGlob, AIC[[1]]]
+                })))],
+  fits_SCALAROU_best_clade_2_AIC_t5[
+    , cbind(.SD, data.table(fitType2   =   "SCALAR OU RCP AIC q=20"         ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = score - 
+                sapply(IdGlob, function(idGlob) {
+                  fits_TrueModels_t5[IdGlob == idGlob, AIC[[1]]]
+                })))],
+  fits_SURFACE_best_clade_2_AICc_t5[
+    , cbind(.SD, data.table(fitType2   =   "SURFACE RCP AICc q=20"         ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = score - 
+                sapply(IdGlob, function(idGlob) {
+                  p <- testData_t5[idGlob, df]
+                  N <- testData_t5[idGlob, 2*nobs]
+                  fits_TrueModels_t5[IdGlob == idGlob, AIC[[1]]] + 2*p + (2*p*(p+1)) / (N - p -1)
+                })))],
+  fits_SURFACE_best_clade_2_AICc_mcs10_t5[
+    , cbind(.SD, data.table(fitType2   =   "SURFACE RCP AICc q=10"         ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = score - 
+                sapply(IdGlob, function(idGlob) {
+                  p <- testData_t5[idGlob, df]
+                  N <- testData_t5[idGlob, 2*nobs]
+                  fits_TrueModels_t5[IdGlob == idGlob, AIC[[1]]] + 2*p + (2*p*(p+1)) / (N - p -1)
+                })))],
+  fits_surface_bwd_t5[
+    , cbind(.SD, data.table(fitType2   =   "SURFACE FWD-BWD AICc q=n.a."      ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = score - 
+                sapply(IdGlob, function(idGlob) {
+                  p <- testData_t5[idGlob, df]
+                  N <- testData_t5[idGlob, 2*nobs]
+                  fits_TrueModels_t5[IdGlob == idGlob, AIC[[1]]] + 2*p + (2*p*(p+1)) / (N - p -1)
+                })))],
+  fits_surface_fwd_t5[
+    , cbind(.SD, data.table(fitType2   =   "SURFACE FWD AICc q=n.a."       ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = score - 
+                sapply(IdGlob, function(idGlob) {
+                  p <- testData_t5[idGlob, df]
+                  N <- testData_t5[idGlob, 2*nobs]
+                  fits_TrueModels_t5[IdGlob == idGlob, AIC[[1]]] + 2*p + (2*p*(p+1)) / (N - p -1)
+                })))]
+), fill = TRUE)
+
+dtSimulationFits[, fitType:=factor(
+  fitType2, 
+  levels = c("MGPM A-F TRUE MLE q=n.a.",   
+             "MGPM A-F FULL AIC q=20"     ,
+             "MGPM A-F FULL AIC2 q=20"   ,
+             "MGPM A-F RCP B.2 RR AIC q=20",
+             "MGPM A-F RCP B.2 AIC q=20"    ,
+             "MGPM A-F RCP B.1 RR AIC q=20"   ,
+             "SCALAR OU RCP AIC q=20"       ,
+             "SURFACE RCP AICc q=20"        ,
+             "SURFACE RCP AICc q=10"        ,
+             "SURFACE FWD-BWD AICc q=n.a."  ,
+             "SURFACE FWD AICc q=n.a."))]
+
+for(i in seq_len(nrow(dtSimulationFits))) {
+  dtSimulationFits[
+    i,
+    c("TreeType", "TreeSize", "Mapping") := {
+      
+      idx <- list(IdTree[[1]], 
+                  IdClusteringForTree[[1]], 
+                  IdMappingForClustering[[1]], 
+                  IdParamForMapping[[1]])
+      
+      subTestData <- testData_t5[
+        idx, list(treeType, treeSize, mapping)]
+      
+      list(
+        subTestData$treeType[1], 
+        subTestData$treeSize[1],
+        sapply(
+          subTestData$mapping[1], 
+          function(m) {
+            do.call(paste0, as.list(names(MGPMDefaultModelTypes())[m]))
+          }))
+    }]
+}
+
+# The original calculation in the CalculateDistanceToTrueModelDistributions_t5.R
+# script calculates the squared Mahalanobis distance, so we have to correct it.
+dtSimulationFits[, dMahalanobis:=sqrt(dMahalanobis)]
+
+dtSimulationFits[
+  , TreeType2:=factor(
+    TreeType, levels = c("ultrametric", "non-ultrametric"), 
+    labels = c("Ultram.", "Non-ultram."))]
+
+setnames(dtSimulationFits, c("TreeType", "TreeType2"), c("TreeType2", "TreeType"))
+
+dtSimulationFits[
+  , TreeSize2:=factor(TreeSize, levels = paste0("N=", c(80,159,318,638)))]
+
+setnames(dtSimulationFits, c("TreeSize", "TreeSize2"), c("TreeSize2", "TreeSize"))
+
+dtSimulationFits[
+  , NumRegimes:=stringr::str_length(Mapping)]
+
+dtSimulationFits[, ParameterGroup:=factor(IdParamForMapping <= 4, levels = c(TRUE, FALSE), labels = c("DistinctThetaOU", "SimilarThetaOU"))]
+
+dtSimulationFits[, RegimeGroup:=factor(NumRegimes == 2, levels = c(TRUE, FALSE), labels = c("R=2", "R > 2"))]
+
+usethis::use_data(dtSimulationFits, overwrite = TRUE)
+```
+
+```{r dtFig, eval=TRUE}
+dtFig <- dtSimulationFits[
+  IdGlob %in% testData_t5_fittedIds, 
+  list(
+    TreeType = unique(TreeType),
+    TreeType2 = unique(TreeType2),
+    TreeSize = unique(TreeSize),
+    NumRegimes = unique(NumRegimes),
+    Mapping = unique(Mapping),
+    ParameterGroup = unique(ParameterGroup),
+    RegimeGroup = unique(RegimeGroup),
+    
+    dBhattacharyya = mean(dBhattacharyya, na.rm = TRUE),
+    dMahalanobis = mean(dMahalanobis, na.rm = TRUE),
+    perf_Cluster_tpr = mean(perf_Cluster_tpr, na.rm = TRUE),
+    perf_Cluster_fpr = mean(perf_Cluster_fpr, na.rm = TRUE),
+    perf_BM_tpr = mean(perf_BM_tpr, na.rm = TRUE),
+    perf_BM_fpr = mean(perf_BM_fpr, na.rm = TRUE),
+    perf_OU_tpr = mean(perf_OU_tpr, na.rm = TRUE),
+    perf_OU_fpr = mean(perf_OU_fpr, na.rm = TRUE),
+    perf_Uncorrelated_tpr = mean(perf_Uncorrelated_tpr, na.rm = TRUE),
+    perf_Uncorrelated_fpr = mean(perf_Uncorrelated_fpr, na.rm = TRUE),
+    perf_Correlated_tpr = mean(perf_Correlated_tpr, na.rm = TRUE),
+    perf_Correlated_fpr = mean(perf_Correlated_fpr, na.rm = TRUE),
+    perf_NonDiagonalH_tpr = mean(perf_NonDiagonalH_tpr, na.rm = TRUE),
+    perf_NonDiagonalH_fpr = mean(perf_NonDiagonalH_fpr, na.rm = TRUE),
+    perf_AsymmetricH_tpr = mean(perf_AsymmetricH_tpr, na.rm = TRUE),
+    perf_AsymmetricH_fpr = mean(perf_AsymmetricH_fpr, na.rm = TRUE),
+    deltaNumRegimes = mean(deltaNumRegimes, na.rm = TRUE),
+    deltaScore = mean(deltaScore, na.rm = TRUE)
+    ),
+  keyby = list(IdTree, IdClusteringForTree, IdMappingForClustering, IdParamForMapping, fitType)]
+
+usethis::use_data(dtFig, overwrite = TRUE)
+
+fitTypesBigger80 <- c(
+  "MGPM A-F TRUE MLE q=n.a.",   
+  "MGPM A-F RCP B.1 RR AIC q=20"   ,
+  "MGPM A-F RCP B.2 RR AIC q=20",
+  "MGPM A-F RCP B.2 AIC q=20"    ,
+  "SCALAR OU RCP AIC q=20"       ,
+  "SURFACE RCP AICc q=20")
+
+usethis::use_data(fitTypesBigger80, overwrite = TRUE)
+```
+
+
+```{r fig-dMahalanobis-1-4, fig.width=9, fig.height=9, eval=TRUE}
+rmre <- colorRampPalette(c("red", muted("red")))(25)
+yre <- colorRampPalette(c("yellow", "red"))(50)
+greye <- colorRampPalette(c("green", "yellow"))(50)
+blgre <- colorRampPalette(c("blue", "green"))(50)
+mbl <- colorRampPalette(c(muted("blue"), "blue"))(25)
+
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+fitTypes <- c(list(dtFig[, unique(fitType)]), rep(list(fitTypesBigger80), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping <= 4], 
+    aes(IdParamForMapping, fitType, fill = dMahalanobis))+
+    geom_tile(color = "white") +
+    scale_fill_gradientn(
+      colours=c(mbl, blgre, greye, yre, rmre), na.value = "grey98", limits = c(0, 200), space = "Lab", name="Mahalanobis\ndistance\n") +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+    
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+
+```{r fig-dMahalanobis-5-8, fig.width=9, fig.height=9, eval=TRUE}
+rmre <- colorRampPalette(c("red", muted("red")))(25)
+yre <- colorRampPalette(c("yellow", "red"))(50)
+greye <- colorRampPalette(c("green", "yellow"))(50)
+blgre <- colorRampPalette(c("blue", "green"))(50)
+mbl <- colorRampPalette(c(muted("blue"), "blue"))(25)
+
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+fitTypes <- c(list(dtFig[, unique(fitType)]), rep(list(fitTypesBigger80), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping > 4], 
+    aes(IdParamForMapping, fitType, fill = dMahalanobis)) +
+    geom_tile(color = "white") +
+    scale_fill_gradientn(
+      colours=c(mbl, blgre, greye, yre, rmre), na.value = "grey98", limits = c(0, 200), space = "Lab", name="Mahalanobis\ndistance\n") +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+    
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-dBhattacharyya-1-4, fig.width=9, fig.height=9, eval=TRUE}
+rmre <- colorRampPalette(c("red", muted("red")))(25)
+yre <- colorRampPalette(c("yellow", "red"))(50)
+greye <- colorRampPalette(c("green", "yellow"))(50)
+blgre <- colorRampPalette(c("blue", "green"))(50)
+mbl <- colorRampPalette(c(muted("blue"), "blue"))(25)
+
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+fitTypes <- c(list(dtFig[, unique(fitType)]), rep(list(fitTypesBigger80), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping <= 4], 
+    aes(IdParamForMapping, fitType, fill = dBhattacharyya))+
+    geom_tile(color = "white") +
+    scale_fill_gradientn(
+      colours=c(mbl, blgre, greye, yre, rmre), na.value = "grey98", limits = c(0, 200), space = "Lab", name="Bhattacharyya\ndistance\n") +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-dBhattacharyya-5-8, fig.width=9, fig.height=9, eval=TRUE}
+rmre <- colorRampPalette(c("red", muted("red")))(25)
+yre <- colorRampPalette(c("yellow", "red"))(50)
+greye <- colorRampPalette(c("green", "yellow"))(50)
+blgre <- colorRampPalette(c("blue", "green"))(50)
+mbl <- colorRampPalette(c(muted("blue"), "blue"))(25)
+
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+fitTypes <- c(list(dtFig[, unique(fitType)]), rep(list(fitTypesBigger80), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping > 4], 
+    aes(IdParamForMapping, fitType, fill = dBhattacharyya))+
+    geom_tile(color = "white") +
+    scale_fill_gradientn(
+      colours=c(mbl, blgre, greye, yre, rmre), na.value = "grey98", limits = c(0, 200), space = "Lab", name="Bhattacharyya\ndistance\n") +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+
+```{r fig-deltaNumRegimes-1-4, fig.width=9, fig.height=9, eval=TRUE}
+rmre <- colorRampPalette(c("red", muted("red")))(2)
+yre <- colorRampPalette(c("yellow", "red"))(5)
+greye <- colorRampPalette(c("green", "yellow"))(5)
+blgre <- colorRampPalette(c("blue", "green"))(5)
+mbl <- colorRampPalette(c(muted("blue"), "blue"))(2)
+
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+fitTypes <- c(list(dtFig[, unique(fitType)]), rep(list(fitTypesBigger80), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping <= 4], 
+    aes(IdParamForMapping, fitType, fill = deltaNumRegimes))+
+    geom_tile(color = "white") +
+    scale_fill_gradientn(
+      colours=c(mbl, blgre, greye, yre, rmre), na.value = "grey98", limits = c(-8, 8), space = "Lab", name="Number of regimes\ndifference\n") +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-deltaNumRegimes-5-8, fig.width=9, fig.height=9, eval=TRUE}
+rmre <- colorRampPalette(c("red", muted("red")))(2)
+yre <- colorRampPalette(c("yellow", "red"))(5)
+greye <- colorRampPalette(c("green", "yellow"))(5)
+blgre <- colorRampPalette(c("blue", "green"))(5)
+mbl <- colorRampPalette(c(muted("blue"), "blue"))(2)
+
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+fitTypes <- c(list(dtFig[, unique(fitType)]), rep(list(fitTypesBigger80), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping > 4], 
+    aes(IdParamForMapping, fitType, fill = deltaNumRegimes))+
+    geom_tile(color = "white") +
+    scale_fill_gradientn(
+      colours=c(mbl, blgre, greye, yre, rmre), na.value = "grey98", limits = c(-8, 8), space = "Lab", name="Number of regimes\ndifference\n") +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+
+```{r fig-deltaScore-1-4, fig.width=9, fig.height=9, eval=TRUE}
+rmre <- colorRampPalette(c("red", muted("red")))(25)
+yre <- colorRampPalette(c("yellow", "red"))(50)
+greye <- colorRampPalette(c("green", "yellow"))(50)
+blgre <- colorRampPalette(c("blue", "green"))(50)
+mbl <- colorRampPalette(c(muted("blue"), "blue"))(25)
+
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+fitTypes <- c(list(dtFig[, unique(fitType)]), rep(list(fitTypesBigger80), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping <= 4], 
+    aes(IdParamForMapping, fitType, fill = deltaScore))+
+    geom_tile(color = "white") +
+    scale_fill_gradientn(
+      colours=c(mbl, blgre, greye, yre, rmre), na.value = "grey98", limits = c(-200, 200), space = "Lab", name="Score\ndifference\n") +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-deltaScore-5-8, fig.width=9, fig.height=9, eval=TRUE}
+rmre <- colorRampPalette(c("red", muted("red")))(25)
+yre <- colorRampPalette(c("yellow", "red"))(50)
+greye <- colorRampPalette(c("green", "yellow"))(50)
+blgre <- colorRampPalette(c("blue", "green"))(50)
+mbl <- colorRampPalette(c(muted("blue"), "blue"))(25)
+
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+fitTypes <- c(list(dtFig[, unique(fitType)]), rep(list(fitTypesBigger80), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping > 4], 
+    aes(IdParamForMapping, fitType, fill = deltaScore))+
+    geom_tile(color = "white") +
+    scale_fill_gradientn(
+      colours=c(mbl, blgre, greye, yre, rmre), na.value = "grey98", limits = c(-200, 200), space = "Lab", name="Score\ndifference\n") +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-perfCluster-1-4, fig.width=9, fig.height=9, eval=TRUE}
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+fitTypes <- c(list(dtFig[, unique(fitType)]), rep(list(fitTypesBigger80), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping <= 4], 
+    aes(IdParamForMapping, fitType, fill = perf_Cluster_tpr))+
+    geom_tile(color = "white") +
+    geom_point(aes(color = perf_Cluster_fpr), shape = 19, size = 1.5) +
+    scale_fill_gradient(space = "Lab", name="True positive rate \n", limits = c(0, 1)) +
+    scale_color_gradient(space = "Lab", name="False positive rate \n", limits = c(0, 1)) +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-perfCluster-5-8, fig.width=9, fig.height=9, eval=TRUE}
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+fitTypes <- c(list(dtFig[, unique(fitType)]), rep(list(fitTypesBigger80), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping > 4], 
+    aes(IdParamForMapping, fitType, fill = perf_Cluster_tpr))+
+    geom_tile(color = "white") +
+    geom_point(aes(color = perf_Cluster_fpr), shape = 19, size = 1.5) +
+    scale_fill_gradient(space = "Lab", name="True positive rate \n", limits = c(0, 1)) +
+    scale_color_gradient(space = "Lab", name="False positive rate \n", limits = c(0, 1)) +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-perfOU-1-4, fig.width=9, fig.height=9, eval=TRUE}
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+
+fitTypes80 <- c(
+  fitTypesBigger80[1:4], 
+  c("MGPM (A-F) full AIC q=20",
+    "MGPM (A-F) full AIC-2 q=20"))
+
+fitTypes <- c(list(fitTypes80), rep(list(fitTypesBigger80[1:4]), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping <= 4], 
+    aes(IdParamForMapping, fitType, fill = perf_OU_tpr))+
+    geom_tile(color = "white") +
+    geom_point(aes(color = perf_OU_fpr), shape = 19, size = 1.5) +
+    scale_fill_gradient(space = "Lab", name="True positive rate \n", limits = c(0, 1)) +
+    scale_color_gradient(space = "Lab", name="False positive rate \n", limits = c(0, 1)) +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-perfOU-5-8, fig.width=9, fig.height=9, eval=TRUE}
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+
+fitTypes80 <- c(
+  fitTypesBigger80[1:4], 
+  c("MGPM (A-F) full AIC q=20",
+    "MGPM (A-F) full AIC-2 q=20"))
+
+fitTypes <- c(list(fitTypes80), rep(list(fitTypesBigger80[1:4]), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping > 4], 
+    aes(IdParamForMapping, fitType, fill = perf_OU_tpr))+
+    geom_tile(color = "white") +
+    geom_point(aes(color = perf_OU_fpr), shape = 19, size = 1.5) +
+    scale_fill_gradient(space = "Lab", name="True positive rate \n", limits = c(0, 1)) +
+    scale_color_gradient(space = "Lab", name="False positive rate \n", limits = c(0, 1)) +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+
+```{r fig-perfCorrelated-1-4, fig.width=9, fig.height=9, eval=TRUE}
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+
+fitTypes80 <- c(
+  fitTypesBigger80[1:4], 
+  c("MGPM (A-F) full AIC q=20",
+    "MGPM (A-F) full AIC-2 q=20"))
+
+fitTypes <- c(list(fitTypes80), rep(list(fitTypesBigger80[1:4]), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping <= 4], 
+    aes(IdParamForMapping, fitType, fill = perf_Correlated_tpr))+
+    geom_tile(color = "white") +
+    geom_point(aes(color = perf_Correlated_fpr), shape = 19, size = 1.5) +
+    scale_fill_gradient(space = "Lab", name="True positive rate \n", limits = c(0, 1)) +
+    scale_color_gradient(space = "Lab", name="False positive rate \n", limits = c(0, 1)) +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-perfCorrelated-5-8, fig.width=9, fig.height=9, eval=TRUE}
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+
+fitTypes80 <- c(
+  fitTypesBigger80[1:4], 
+  c("MGPM (A-F) full AIC q=20",
+    "MGPM (A-F) full AIC-2 q=20"))
+
+fitTypes <- c(list(fitTypes80), rep(list(fitTypesBigger80[1:4]), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping > 4], 
+    aes(IdParamForMapping, fitType, fill = perf_Correlated_tpr))+
+    geom_tile(color = "white") +
+    geom_point(aes(color = perf_Correlated_fpr), shape = 19, size = 1.5) +
+    scale_fill_gradient(space = "Lab", name="True positive rate \n", limits = c(0, 1)) +
+    scale_color_gradient(space = "Lab", name="False positive rate \n", limits = c(0, 1)) +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-perfNonDiagonalH-1-4, fig.width=9, fig.height=9, eval=TRUE}
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+
+fitTypes80 <- c(
+  fitTypesBigger80[1:4], 
+  c("MGPM (A-F) full AIC q=20",
+    "MGPM (A-F) full AIC-2 q=20"))
+
+fitTypes <- c(list(fitTypes80), rep(list(fitTypesBigger80[1:4]), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping <= 4], 
+    aes(IdParamForMapping, fitType, fill = perf_NonDiagonalH_tpr))+
+    geom_tile(color = "white") +
+    geom_point(aes(color = perf_NonDiagonalH_fpr), shape = 19, size = 1.5) +
+    scale_fill_gradient(space = "Lab", name="True positive rate \n", limits = c(0, 1)) +
+    scale_color_gradient(space = "Lab", name="False positive rate \n", limits = c(0, 1)) +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-perfNonDiagonalH-5-8, fig.width=9, fig.height=9, eval=TRUE}
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+
+fitTypes80 <- c(
+  fitTypesBigger80[1:4], 
+  c("MGPM (A-F) full AIC q=20",
+    "MGPM (A-F) full AIC-2 q=20"))
+
+fitTypes <- c(list(fitTypes80), rep(list(fitTypesBigger80[1:4]), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping > 4], 
+    aes(IdParamForMapping, fitType, fill = perf_NonDiagonalH_tpr))+
+    geom_tile(color = "white") +
+    geom_point(aes(color = perf_NonDiagonalH_fpr), shape = 19, size = 1.5) +
+    scale_fill_gradient(space = "Lab", name="True positive rate \n", limits = c(0, 1)) +
+    scale_color_gradient(space = "Lab", name="False positive rate \n", limits = c(0, 1)) +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-perfAsymmetricH-1-4, fig.width=9, fig.height=9, eval=TRUE}
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+
+fitTypes80 <- c(
+  fitTypesBigger80[1:4], 
+  c("MGPM (A-F) full AIC q=20",
+    "MGPM (A-F) full AIC-2 q=20"))
+
+fitTypes <- c(list(fitTypes80), rep(list(fitTypesBigger80[1:4]), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping <= 4], 
+    aes(IdParamForMapping, fitType, fill = perf_AsymmetricH_tpr))+
+    geom_tile(color = "white") +
+    geom_point(aes(color = perf_AsymmetricH_fpr), shape = 19, size = 1.5) +
+    scale_fill_gradient(space = "Lab", name="True positive rate \n", limits = c(0, 1)) +
+    scale_color_gradient(space = "Lab", name="False positive rate \n", limits = c(0, 1)) +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+```{r fig-perfAsymmetricH-5-8, fig.width=9, fig.height=9, eval=TRUE}
+treeSizes <- c("N=80", "N=159", "N=318", "N=638")
+
+fitTypes80 <- c(
+  fitTypesBigger80[1:4], 
+  c("MGPM (A-F) full AIC q=20",
+    "MGPM (A-F) full AIC-2 q=20"))
+
+fitTypes <- c(list(fitTypes80), rep(list(fitTypesBigger80[1:4]), 3))
+
+plotList <- lapply(seq_along(treeSizes), function(its) 
+  ggplot(
+    data = dtFig[TreeSize == treeSizes[its] & fitType %in% fitTypes[[its]] & IdParamForMapping > 4], 
+    aes(IdParamForMapping, fitType, fill = perf_AsymmetricH_tpr))+
+    geom_tile(color = "white") +
+    geom_point(aes(color = perf_AsymmetricH_fpr), shape = 19, size = 1.5) +
+    scale_fill_gradient(space = "Lab", name="True positive rate \n", limits = c(0, 1)) +
+    scale_color_gradient(space = "Lab", name="False positive rate \n", limits = c(0, 1)) +
+    theme_grey() + 
+    coord_fixed(ratio = 1) + 
+    xlab("Parameter set") + 
+    theme(legend.position = "right", axis.title.y = element_blank(), strip.text = element_text(size = 7)) +
+    facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))))
+
+legend <- cowplot::get_legend(plotList[[1]] + theme(legend.position = "bottom"))  
+plTop <- cowplot::plot_grid(
+  plotlist = lapply(
+    plotList, function(pl) pl + theme(legend.position = "none")), 
+  ncol = 1, rel_heights = c(rep(0.7, 1), rep(0.52, 3)))
+
+cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
+```
+
+
+```{r}
+options(digits=2)
+```
+
+```{r}
+dtSimulationFits[
+  , summary(lm(dMahalanobis~fitType))]
+dtSimulationFits[
+  , summary(lm(dBhattacharyya~fitType))]
+dtSimulationFits[
+  , summary(lm(deltaNumRegimes~ fitType))]
+dtSimulationFits[
+  , summary(lm(perf_Cluster_tpr~fitType ))]
+dtSimulationFits[
+  , summary(lm(perf_Cluster_fpr~fitType))]
+```
+
+```{r}
+dtSimulationFits[
+  , summary(lm(dMahalanobis~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType))]
+```
+
+```{r}
+options(digits=2)
+dtSimulationFits[
+  , summary(lm(dBhattacharyya~fitType))]
+dtSimulationFits[
+  , summary(lm(dBhattacharyya~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType))]
+```
+
+
+```{r}
+options(digits=2)
+dtSimulationFits[TreeSize == "N=80"
+  , summary(lm(deltaNumRegimes~ fitType))]
+
+dtSimulationFits[TreeSize == "N=159"
+  , summary(lm(deltaNumRegimes~ fitType))]
+
+dtSimulationFits[TreeSize == "N=318"
+  , summary(lm(deltaNumRegimes~ fitType))]
+
+dtSimulationFits[TreeSize == "N=638" & deltaScore <=0
+  , summary(lm(deltaNumRegimes~ fitType))]
+
+dtSimulationFits[
+  , summary(lm(deltaNumRegimes~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType))]
+
+
+```
+
+
+```{r}
+options(digits = 2)
+dtSimulationFits[
+  , summary(lm(perf_Cluster_tpr~fitType ))]
+dtSimulationFits[
+  , summary(lm(perf_Cluster_fpr~fitType))]
+dtSimulationFits[
+  , summary(lm(perf_Cluster_tpr~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType ))]
+dtSimulationFits[
+  , summary(lm(perf_Cluster_fpr~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType))]
+```
+
+
+```{r}
+dtSimulationFits[
+  , summary(lm(perf_OU_tpr~ fitType))]
+dtSimulationFits[
+  , summary(lm(perf_OU_fpr~ fitType))]
+dtSimulationFits[
+  , summary(lm(perf_OU_tpr~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType ))]
+dtSimulationFits[
+  , summary(lm(perf_OU_fpr~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType ))]
+```
+
+
+```{r}
+dtSimulationFits[
+  , summary(lm(perf_Correlated_tpr~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType))]
+dtSimulationFits[
+  , summary(lm(perf_Correlated_fpr~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType))]
+```
+
+```{r}
+dtSimulationFits[
+  , summary(lm(perf_NonDiagonalH_tpr~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType))]
+dtSimulationFits[
+  , summary(lm(perf_NonDiagonalH_fpr~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType))]
+```
+
+```{r}
+dtSimulationFits[
+  , summary(lm(perf_AsymmetricH_tpr~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType))]
+dtSimulationFits[
+  , summary(lm(perf_AsymmetricH_fpr~TreeSize+TreeType+RegimeGroup+ParameterGroup + fitType))]
+```
