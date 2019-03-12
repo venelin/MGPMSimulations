@@ -22,6 +22,14 @@ This package contains large data files and is not intended for release on CRAN. 
 
         git pull
 
+-   \[optional: This step is only needed if you need to inspect the row result-files from the MGPM simulations.\] Concatenate the binary files ResultsDirs.tar.gz.part\* into one file. This binary file was split in parts using the command (`split -b 1400m ResultsDirs.tar.gz "ResultsDirs.tar.gz.part"`):
+
+        cat ResultsDirs.tar.gz.parta* > ResultsDirs.tar.gz
+
+-   -   \[optional: This step is only needed if you need to inspect the row result-files from the MGPM simulations.\] Decompress ResultsDirs.tar.gz:
+
+            tar -zxvf ResultsDirs.tar.gz
+
 -   Install the package from your local working copy (type the following command in your R interpreter). Note that the directory MGPMMammals should be in your current directory from which R is running:
 
 ``` r
