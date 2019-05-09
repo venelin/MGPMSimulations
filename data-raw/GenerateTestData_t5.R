@@ -6,15 +6,13 @@ library(data.table)
 library(phytools)
 library(ggtree)
 
-PCMFit::GeneratePCMModelTypes()
-
 options(PCMBase.Value.NA = -1e20)
 options(PCMBase.Lmr.mode = 11)
 
 options(PCMBase.Threshold.EV = 1e-7)
 
-simulatedModels <- PCMFit::MGPMDefaultModelTypes()
-argsMixedGaussian_SimulatedModels <- PCMFit::Args_MixedGaussian_MGPMDefaultModelTypes()
+simulatedModels <- MGPMDefaultModelTypes()
+argsMixedGaussian_SimulatedModels <- Args_MixedGaussian_MGPMDefaultModelTypes()
 
 
 # We overwrite the limits for the model parameters. This
@@ -133,7 +131,7 @@ PCMParamUpperLimit.OU <- function(o, k, R, ...) {
 
 
 
-set.seed(2)
+set.seed(2, kind = "Mersenne-Twister", normal.kind = "Inversion")
 
 # number of regimes
 R <- 2
@@ -177,7 +175,7 @@ PCMTreeSetPartition(treeExtant638)
 # PCMTreePlot(treeFossil638, layout="fan") + geom_nodelab(size = 3)
 # PCMTreePlot(treeExtant638, layout="fan") + geom_nodelab(size = 3)
 
-set.seed(2)
+set.seed(2, kind = "Mersenne-Twister", normal.kind = "Inversion")
 
 # this will generate a non-ultrametric tree with 80 tips
 treeFossil80 <- pbtree(n=48, scale=1, b = 1, d = 0.4)
@@ -187,7 +185,7 @@ treeFossil80$edge.length <- treeFossil80$edge.length / max(PCMTreeNodeTimes(tree
 treeFossil80 <- PCMTree(treeFossil80)
 PCMTreeSetPartition(treeFossil80)
 
-set.seed(2)
+set.seed(2, kind = "Mersenne-Twister", normal.kind = "Inversion")
 treeExtant80 <- pbtree(n=80, scale=1, b = 1, d = 0.4, extant.only = TRUE)
 PCMTreeSetLabels(treeExtant80)
 # set the depth of the tree to the depth of the mammal tree (166.2)
@@ -230,7 +228,7 @@ nSimulationsPerRandomParam <- 4
 # number of traits
 k <- 2
 
-set.seed(1)
+set.seed(1, kind = "Mersenne-Twister", normal.kind = "Inversion")
 
 testData_t5 <- rbindlist(
   list(
@@ -375,13 +373,13 @@ testData_t5 <- rbindlist(
 
 
 testData_t5[, treeWithRegimes:=lapply(1:.N, function(i) {
-  PCMTreeSetRegimes(tree[[i]], nodes = clusterNodes[[i]], inplace = FALSE)
+  PCMTreeSetPartition(tree[[i]], nodes = clusterNodes[[i]], inplace = FALSE)
 })]
 
 # this will reorder the nodes in clusterNodes column according to the preorder traversal of
 # the tree
 testData_t5[, clusterNodes:=lapply(1:.N, function(i) {
-  PCMTreeGetLabels(treeWithRegimes[[i]])[PCMTreeGetStartingNodesRegimes(treeWithRegimes[[i]])]
+  PCMTreeGetLabels(treeWithRegimes[[i]])[PCMTreeGetPartition(treeWithRegimes[[i]])]
 })]
 
 # see how the treees with regimes look like
