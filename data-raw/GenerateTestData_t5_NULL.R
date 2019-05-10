@@ -225,3 +225,9 @@ testData_t5_NULL[, IdGlob:=.I]
 
 # store the data within the package MGPMSimulations
 usethis::use_data(testData_t5_NULL, overwrite = TRUE)
+
+testData_t5_NULL_fittedIds <- c(
+  testData_t5_NULL[nobs %in% c(80) & IdParamForMapping %in% c(1, 3), IdGlob],
+  testData_t5_NULL[nobs %in% c(318) & IdParamForMapping %in% c(1, 3), IdGlob])
+
+usethis::use_data(testData_t5_NULL_fittedIds, overwrite = TRUE)
