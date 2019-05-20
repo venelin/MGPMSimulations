@@ -4,26 +4,11 @@
 # e.g. is H a symmetric matrix, are the traits evolving in a correlated fashion, etc.
 
 # examples:
-# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5.R --args fits_TrueModels_t5 1
-#
-# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5.R --args fits_MGPM_A_F_all_AIC_t5 1
-# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5.R --args fits_MGPM_A_F_all_AIC2_t5 1
-# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5.R --args fits_MGPM_A_F_best_clade_2_AIC_t5 1
-# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5.R --args fits_MGPM_A_F_best_clade_2_RR_AIC_t5 1
-# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5.R --args fits_MGPM_A_F_best_clade_RR_AIC_t5 1
-#
-# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5.R --args fits_SURFACE_best_clade_2_AICc_t5 0
-# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5.R --args fits_SURFACE_best_clade_2_AICc_mcs10_t5 0
-# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5.R --args fits_surface_fwd_t5 0
-# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5.R --args fits_surface_bwd_t5 0
-#
-# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5.R --args fits_SCALAROU_best_clade_2_AIC_t5 0
+# bsub -n 1 R --vanilla -f CalculateBinaryCriteria_t5_NULL.R --args fits_MGPM_A_F_best_clade_2_RR_t5_NULL 1
 
 library(PCMBase)
 library(MGPMSimulations)
 library(data.table)
-library(fpc)
-
 
 args <- commandArgs(trailingOnly = TRUE)
 if(length(args) == 2) {
@@ -90,10 +75,10 @@ data[, c("perf_Cluster_tpr",
 
       idGlob <- IdGlob[i]
 
-      trueTree <- testData_t5$treeWithRegimes[[idGlob]]
-      trueMappedModels <- testData_t5$mapping[[idGlob]][PCMTreeGetRegimesForEdges(trueTree)]
+      trueTree <- testData_t5_NULL$treeWithRegimes[[idGlob]]
+      trueMappedModels <- testData_t5_NULL$mapping[[idGlob]][PCMTreeGetRegimesForEdges(trueTree)]
 
-      predictedTree <- PCMTree(testData_t5$tree[[idGlob]])
+      predictedTree <- PCMTree(testData_t5_NULL$tree[[idGlob]])
 
       if(is.null(names(clusterNodes[[i]]))) {
         # normal MixedGaussian model without lumped models, regimes are named
@@ -128,7 +113,6 @@ data[, c("perf_Cluster_tpr",
                     is.BM(trueMappedModels)),
           fpr = fpr(is.BM(predictedMappedModels),
                     is.BM(trueMappedModels)))
-
         res$perf_OU = c(
           tpr = tpr(is.OU(predictedMappedModels),
                     is.OU(trueMappedModels)),
@@ -147,17 +131,6 @@ data[, c("perf_Cluster_tpr",
           fpr = fpr(is.Correlated(predictedMappedModels),
                     is.Correlated(trueMappedModels)))
 
-        res$perf_NonDiagonalH = c(
-          tpr = tpr(is.NonDiagonalH(predictedMappedModels),
-                    is.NonDiagonalH(trueMappedModels)),
-          fpr = fpr(is.NonDiagonalH(predictedMappedModels),
-                    is.NonDiagonalH(trueMappedModels)))
-
-        res$perf_AsymmetricH = c(
-          tpr = tpr(is.NonSymmetricH(predictedMappedModels),
-                    is.NonSymmetricH(trueMappedModels)),
-          fpr = fpr(is.NonSymmetricH(predictedMappedModels),
-                    is.NonSymmetricH(trueMappedModels)))
       } else {
         res$perf_BM = c(
           tpr = NA_real_,

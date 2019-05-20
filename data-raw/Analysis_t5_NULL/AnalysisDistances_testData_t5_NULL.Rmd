@@ -1,0 +1,285 @@
+---
+title: "Distances t5"
+author: "Venelin Mitov"
+date: "1/22/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(PCMBase)
+library(PCMFit)
+library(MGPMSimulations)
+library(data.table)
+library(rmarkdown)
+library(knitr)
+library(scales)
+library(RColorBrewer)
+
+opts_chunk$set(dev='pdf', 
+               #results="hide",
+               warning=FALSE,
+               dev.args=list(
+                 family="ArialMT", 
+                 pointsize=10,
+                 colormodel='rgb'
+               ),
+               dpi=600, bg='white')
+
+options(PCMBase.Value.NA = -1e20)
+options(PCMBase.Lmr.mode = 11)
+options(PCMBase.Threshold.EV = 1e-7)
+
+options(width = 120)
+```
+
+```{r dtSimulationFits, eval = TRUE, include=FALSE}
+dtSimulationFitsNULL <- fits_MGPM_A_F_best_clade_2_RR_t5_NULL[
+    , cbind(.SD, data.table(fitType2   =   "MGPM A-F RCP B.2 RR AIC q=20"      ),
+            data.table(
+              deltaNumRegimes = 
+                sapply(clusterNodes, function(cn) if(is.null(cn)) NA_real_ else length(unique(cn))) -
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5_NULL[idGlob, length(unique(clusterNodes[[1]]))]
+                }),
+              deltaScore = score - 
+                sapply(IdGlob, function(idGlob) {
+                  testData_t5_NULL[IdGlob == idGlob, AIC[[1]]]
+                })))]
+
+dtSimulationFitsNULL[, fitType:=factor(
+  fitType2, 
+  levels = c("MGPM A-F RCP B.2 RR AIC q=20"))]
+
+for(i in seq_len(nrow(dtSimulationFitsNULL))) {
+  dtSimulationFitsNULL[
+    i,
+    c("TreeType", "TreeSize", "Mapping", "NumTraits") := {
+      
+      idx <- list(IdTree[[1]], 
+                  IdClusteringForTree[[1]], 
+                  IdMappingForClustering[[1]], 
+                  numTraits[[1]],
+                  IdParamForMapping[[1]])
+      
+      subTestData <- testData_t5_NULL[
+        idx, list(treeType, treeSize, mapping, numTraits)]
+      
+      list(
+        subTestData$treeType[1], 
+        subTestData$treeSize[1],
+        sapply(
+          subTestData$mapping[1], 
+          function(m) {
+            do.call(paste0, as.list(names(MGPMDefaultModelTypes())[m]))
+          }),
+        subTestData$numTraits[1])
+    }]
+}
+
+dtSimulationFitsNULL[
+  , TreeType2:=factor(
+    TreeType, levels = c("ultrametric", "non-ultrametric"), 
+    labels = c("Ultr.", "Non-ultr."))]
+
+setnames(dtSimulationFitsNULL, c("TreeType", "TreeType2"), c("TreeType2", "TreeType"))
+
+dtSimulationFitsNULL[
+  , TreeSize2:=factor(TreeSize, levels = paste0("N=", c(80,159,318,638)))]
+
+setnames(dtSimulationFitsNULL, c("TreeSize", "TreeSize2"), c("TreeSize2", "TreeSize"))
+
+dtSimulationFitsNULL[
+  , NumRegimes:=stringr::str_length(Mapping)]
+
+usethis::use_data(dtSimulationFitsNULL, overwrite = TRUE)
+```
+
+```{r dtFigNULL, eval=TRUE, include=FALSE}
+dtFigNULL <- dtSimulationFitsNULL[
+  IdGlob %in% testData_t5_NULL_fittedIds, 
+  list(
+    TreeType = unique(TreeType),
+    TreeType2 = unique(TreeType2),
+    TreeSize = unique(TreeSize),
+    Mapping = unique(Mapping),
+    NumTraits = unique(NumTraits),
+    
+    perf_Cluster_tpr = mean(perf_Cluster_tpr, na.rm = TRUE),
+    perf_Cluster_fpr = mean(perf_Cluster_fpr, na.rm = TRUE),
+    perf_BM_tpr = mean(perf_BM_tpr, na.rm = TRUE),
+    perf_BM_fpr = mean(perf_BM_fpr, na.rm = TRUE),
+    perf_OU_tpr = mean(perf_OU_tpr, na.rm = TRUE),
+    perf_OU_fpr = mean(perf_OU_fpr, na.rm = TRUE),
+    perf_Uncorrelated_tpr = mean(perf_Uncorrelated_tpr, na.rm = TRUE),
+    perf_Uncorrelated_fpr = mean(perf_Uncorrelated_fpr, na.rm = TRUE),
+    perf_Correlated_tpr = mean(perf_Correlated_tpr, na.rm = TRUE),
+    perf_Correlated_fpr = mean(perf_Correlated_fpr, na.rm = TRUE),
+    deltaNumRegimes = mean(deltaNumRegimes, na.rm = TRUE),
+    deltaScore = mean(deltaScore, na.rm = TRUE)
+    ),
+  keyby = list(
+    IdTree, 
+    IdClusteringForTree, 
+    IdMappingForClustering, 
+    numTraits, 
+    IdParamForMapping, 
+    IdSimulationForParam)]
+
+dtFigNULL[, IdParamSimul:=apply(
+  cbind(IdParamForMapping, IdSimulationForParam), 1, function(r) {
+    #paste0(match(r[1], c(1, 3)), ":", r[2])
+    paste0(r[1], ":", r[2])
+  })]
+
+usethis::use_data(dtFigNULL, overwrite = TRUE)
+```
+
+```{r fig-summary-NULL, fig.width=9, fig.height=10, eval=TRUE}
+paletteName <- "RdBu"
+mypalette <- brewer.pal(7, paletteName)
+
+plScore <- ggplot(
+  data = dtFigNULL,
+  aes(factor(IdParamSimul), 
+      factor(NumTraits, levels = c(2, 4, 6, 8)), 
+      fill = deltaScore)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(
+    low = mypalette[7], high=mypalette[1],
+    na.value = "grey98", 
+    space = "Lab",
+    name="Score\ndifference\n") +
+  
+  theme_grey() + 
+  coord_fixed(ratio = 1) + 
+  xlab("Parameter:Simulation") + 
+  ylab("Number of traits (k)") +
+  theme(
+    axis.text = element_text(size = 8),
+    legend.position = "right", 
+    strip.text = element_text(size = 7)) +
+  facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))) +
+  theme(legend.position = "bottom")
+
+plRegimes <- ggplot(
+  data = dtFigNULL,
+  aes(factor(IdParamSimul), 
+      factor(NumTraits, levels = c(2, 4, 6, 8)), 
+      fill = factor(
+        as.integer(deltaNumRegimes), levels = seq(0, 4, by =1))))+
+  geom_tile(color = "white") +
+  scale_fill_brewer(
+    palette = paletteName,
+    direction = -1,
+    limits = c("0", "1", "2", "3"), 
+    na.value = "grey98", 
+    name="Number of regimes\ndifference\n") +
+  
+  theme_grey() + 
+  coord_fixed(ratio = 1) + 
+  xlab("Parameter:Simulation") + 
+  ylab("Number of traits (k)") +
+  theme(
+    axis.text = element_text(size = 8),
+    legend.position = "right", 
+    strip.text = element_text(size = 7)) +
+  facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))) +
+  theme(legend.position = "bottom")
+
+
+plCluster <- ggplot(
+  data = dtFigNULL,
+  aes(factor(IdParamSimul), 
+      factor(NumTraits, levels = c(2, 4, 6, 8)), 
+      fill = perf_Cluster_tpr)) +
+  geom_tile(color = "white") +
+  scale_fill_distiller(
+    palette = paletteName,
+    direction = 1,
+    na.value = "grey98",
+    name="Cluster tpr\n") +
+  
+  theme_grey() + 
+  coord_fixed(ratio = 1) + 
+  xlab("Parameter:Simulation") + 
+  ylab("Number of traits (k)") +
+  theme(
+    axis.text = element_text(size = 8),
+    legend.position = "right", 
+    strip.text = element_text(size = 7)) +
+  facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))) +
+  theme(legend.position = "bottom")
+
+plBM <- ggplot(
+  data = dtFigNULL,
+  aes(factor(IdParamSimul), 
+      factor(NumTraits, levels = c(2, 4, 6, 8)), 
+      fill = perf_OU_fpr)) +
+  geom_tile(color = "white") +
+  scale_fill_distiller(
+    palette = paletteName,
+    direction = -1,
+    na.value = "grey98",
+    name="OU fpr\n") +
+  
+  theme_grey() + 
+  coord_fixed(ratio = 1) + 
+  xlab("Parameter:Simulation") + 
+  ylab("Number of traits (k)") +
+  theme(
+    axis.text = element_text(size = 8),
+    legend.position = "right", 
+    strip.text = element_text(size = 7)) +
+  facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))) +
+  theme(legend.position = "bottom")
+
+plCorrelatedTPR <- ggplot(
+  data = dtFigNULL,
+  aes(factor(IdParamSimul), 
+      factor(NumTraits, levels = c(2, 4, 6, 8)), 
+      fill = perf_Correlated_tpr)) +
+  geom_tile(color = "white") +
+  scale_fill_distiller(
+    palette = paletteName,
+    direction = 1,
+    na.value = "grey98",
+    name="Correlated tpr\n") +
+  
+  theme_grey() + 
+  coord_fixed(ratio = 1) + 
+  xlab("Parameter:Simulation") + 
+  ylab("Number of traits (k)") +
+  theme(
+    axis.text = element_text(size = 8),
+    legend.position = "right", 
+    strip.text = element_text(size = 7)) +
+  facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))) +
+  theme(legend.position = "bottom")
+
+plCorrelatedFPR <- ggplot(
+  data = dtFigNULL,
+  aes(factor(IdParamSimul), 
+      factor(NumTraits, levels = c(2, 4, 6, 8)), 
+      fill = perf_Correlated_fpr)) +
+  geom_tile(color = "white") +
+  scale_fill_distiller(
+    palette = paletteName,
+    direction = -1,
+    na.value = "grey98",
+    name="Correlated fpr\n") +
+  
+  theme_grey() + 
+  coord_fixed(ratio = 1) + 
+  xlab("Parameter:Simulation") + 
+  ylab("Number of traits (k)") +
+  theme(
+    legend.position = "right", 
+    strip.text = element_text(size = 7)) +
+  facet_grid(TreeSize ~ TreeType + factor(Mapping, levels = unique(Mapping))) +
+  theme(legend.position = "bottom")
+
+cowplot::plot_grid(plScore, plRegimes, plCluster, plBM, plCorrelatedTPR, plCorrelatedFPR, labels = LETTERS[1:6], nrow = 3)
+```
+

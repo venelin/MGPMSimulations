@@ -47,17 +47,18 @@ if(file.exists(fileCurrentResults)) {
 
   tableFitsCurrent <- listResults$tableFits
 
-  tempFiles <- list.files(pattern = paste0("^", prefixFiles, ".*.RData"))
-  if(length(tempFiles) > 0) {
-    cat("Loading previously stored tableFits from temporary files (", toString(tempFiles), ")...\n")
-    tableFitsTempFiles <- rbindlist(
-      lapply(tempFiles, function(file) {
-        load(file)
-        fits
-      }))
-    tableFitsCurrent <- PCMFit:::UpdateTableFits(tableFitsCurrent, tableFitsTempFiles)
-  }
+  setkey(tableFitsCurrent, hashCodeTree,hashCodeStartingNodesRegimesLabels,hashCodeMapping)
+}
 
+tempFiles <- list.files(pattern = paste0("^", prefixFiles, ".*.RData"))
+if(length(tempFiles) > 0) {
+  cat("Loading previously stored tableFits from temporary files (", toString(tempFiles), ")...\n")
+  tableFitsTempFiles <- rbindlist(
+    lapply(tempFiles, function(file) {
+      load(file)
+      fits
+    }))
+  tableFitsCurrent <- PCMFit:::UpdateTableFits(tableFitsCurrent, tableFitsTempFiles)
   setkey(tableFitsCurrent, hashCodeTree,hashCodeStartingNodesRegimesLabels,hashCodeMapping)
 }
 
@@ -81,10 +82,6 @@ options(MGPMSimulations.UpperLimitTheta = apply(values, 1, max))
 
 numTraits <- testData_t5_NULL$numTraits[[id]]
 logLik <- testData_t5_NULL$logLik[[id]]
-
-if(!is.null(tableFits)) {
-  tableFits <- tableFits[sapply(treeEDExpression, startsWith, "E(tree")]
-}
 
 fitMappings <- PCMFitMixed(
 
