@@ -11,12 +11,14 @@ PCMParamLowerLimit.BM <- function(o, k, R, ...) {
 
   if(is.Global(o$Sigma_x)) {
     if(!is.Diagonal(o$Sigma_x)) {
-      o$Sigma_x[matUppTri] <- -.0
+      o$Sigma_x[matUppTri] <- getOption(
+        'MGPMSimulations.LowerSigma_xUppTri', -.0)
     }
   } else {
     if(!is.Diagonal(o$Sigma_x)) {
       for(r in seq_len(R)) {
-        o$Sigma_x[, , r][matUppTri] <- -.0
+        o$Sigma_x[, , r][matUppTri] <- getOption(
+          'MGPMSimulations.LowerSigma_xUppTri', -.0)
       }
     }
   }
@@ -72,12 +74,14 @@ PCMParamLowerLimit.OU <- function(o, k, R, ...) {
   }
   if(is.Global(o$Sigma_x)) {
     if(!is.Diagonal(o$Sigma_x)) {
-      o$Sigma_x[matUppTri] <- -.0
+      o$Sigma_x[matUppTri] <- getOption(
+        'MGPMSimulations.LowerSigma_xUppTri', -.0)
     }
   } else {
     if(!is.Diagonal(o$Sigma_x)) {
       for(r in seq_len(R)) {
-        o$Sigma_x[, , r][matUppTri] <- -.0
+        o$Sigma_x[, , r][matUppTri] <- getOption(
+          'MGPMSimulations.LowerSigma_xUppTri', -.0)
       }
     }
   }
