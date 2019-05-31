@@ -13,12 +13,14 @@
 
 # SURFACE fits
 # R --vanilla -f CollectFits_t5.R --args fits_SURFACE_best_clade_2_AICc_t5 Results_t5_NXXX_SURFACE SURFACE_best_clade_2_id_
-# R --vanilla -f CollectFits_t5.R --args fits_SURFACE_best_clade_2_AICc_mcs10_t5 Results_t5_NXXX_SURFACE_mcs10 SURFACE_best_clade_2_mcs10_id_
+# 254 of the above had inferred R=1
 
+# R --vanilla -f CollectFits_t5.R --args fits_SURFACE_best_clade_2_AICc_mcs10_t5 Results_t5_NXXX_SURFACE_mcs10 SURFACE_best_clade_2_mcs10_id_
+# 63 of the above had R = 1
 
 # SCALAR OU fits
 # R --vanilla -f CollectFits_t5.R --args fits_SCALAROU_best_clade_2_AIC_t5 Results_t5_NXXX_SCALAROU SCALAROU_best_clade_2_id_
-
+# 7 of the above had inferred R=1
 
 
 library(PCMFit)
