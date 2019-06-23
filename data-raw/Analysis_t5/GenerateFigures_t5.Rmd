@@ -18,8 +18,6 @@ library(rmarkdown)
 library(MGPMSimulations)
 
 
-PCMFit::GeneratePCMModelTypes()
-
 opts_chunk$set(dev='pdf', 
                #results="hide",
                warning=FALSE,

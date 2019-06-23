@@ -16,6 +16,7 @@ library(rmarkdown)
 library(knitr)
 library(scales)
 library(RColorBrewer)
+library(phytools)
 
 opts_chunk$set(dev='pdf', 
                #results="hide",
@@ -283,3 +284,188 @@ plCorrelatedFPR <- ggplot(
 cowplot::plot_grid(plScore, plRegimes, plCluster, plBM, plCorrelatedTPR, plCorrelatedFPR, labels = LETTERS[1:6], nrow = 3)
 ```
 
+
+```{r}
+testData_t5_NULL[testData_t5_fittedIds][treeType=="ultrametric" & IdMappingForClustering==2&numTraits==4 & nobs == 80, IdGlob]
+
+id <- 41
+
+tree <- testData_t5_NULL$treeWithRegimes[[id]]
+
+values <- testData_t5_NULL$X[[id]][, seq_len(PCMTreeNumTips(tree))]
+rownames(values) <- paste0("V", seq_len(nrow(values)))
+
+trueModel <- testData_t5_NULL$model[[id]]
+
+#logLikFun <- PCMCreateLikelihood(X = values, tree = tree, model = trueModel)
+
+#guessParam <- GuessInitVecParams(o = trueModel, tree = tree, X = values)
+
+bestModel <- fits_MGPM_A_F_best_clade_2_RR_t5_NULL[IdGlob == id]$model[[1]]
+
+objPPRC <- phyl.pca(tree, t(values))
+
+valuesPPRC <- t(objPPRC$S[seq_len(PCMTreeNumTips(tree)), ])
+
+rotatedModel <- bestModel
+
+
+rotatedModel$`1`$Sigma_x[,,1] <- 
+  chol(t(objPPRC$Evec) %*% 
+         ((rotatedModel$`1`$Sigma_x[,,1]) %*% 
+            t(rotatedModel$`1`$Sigma_x[,,1])) %*% 
+         objPPRC$Evec)
+
+
+cat("Det objPRC$rotation:\n")
+print(det(objPPRC$Evec))
+cat("objPPRC$Evec%*%t(objPPRC$Evec):\n")
+print(objPPRC$Evec%*%t(objPPRC$Evec))
+cat("True model:\n")
+PCMLik(X = values, tree = tree, model = trueModel)
+cat("Best model (original data):\n")
+PCMLik(X = values, tree = tree, model = bestModel)
+cat("Rotated best model (rotated data):\n")
+rotatedModel$X0[] <- NA
+PCMLik(X = valuesPPRC, tree = tree, model = rotatedModel)
+
+bestModel$`1`$Sigma_x[,,1]%*%t(bestModel$`1`$Sigma_x[,,1])
+rotatedModel$`1`$Sigma_x[,,1]%*%t(rotatedModel$`1`$Sigma_x[,,1])
+
+modelAOnOriginalData <- MixedGaussian(
+  k = PCMNumTraits(trueModel), 
+  modelTypes = MGPMDefaultModelTypes(), 
+  mapping = c(`1`=1),
+  Sigmae_x = attr(trueModel, "spec")$Sigmae_x)
+
+PCMParamSetByName(modelAOnOriginalData, bestModel, deepCopySubPCMs = TRUE)
+modelAVec <- PCMParamGetShortVector(modelAOnOriginalData)
+modelAOnOriginalData$`1`$Sigma_x[] <- 0
+PCMParamLoadOrStore(modelAOnOriginalData, modelAVec, 0, PCMNumTraits(modelAOnOriginalData), R = PCMNumRegimes(modelAOnOriginalData), load = TRUE)
+
+modelAOnRotatedData <- MixedGaussian(
+  k = PCMNumTraits(trueModel), 
+  modelTypes = MGPMDefaultModelTypes(), 
+  mapping = c(`1`=1),
+  Sigmae_x = attr(trueModel, "spec")$Sigmae_x)
+
+PCMParamSetByName(modelAOnRotatedData, rotatedModel, deepCopySubPCMs = TRUE)
+modelAVec <- PCMParamGetShortVector(modelAOnRotatedData)
+modelAOnRotatedData$`1`$Sigma_x[] <- 0
+PCMParamLoadOrStore(modelAOnRotatedData, modelAVec, 0, PCMNumTraits(modelAOnRotatedData), R = PCMNumRegimes(modelAOnRotatedData), load = TRUE)
+
+cat("model A, original data:")
+PCMLik(X = values, tree = tree, model = modelAOnOriginalData)
+cat("model A, rotated data:")
+PCMLik(X = valuesPPRC, tree = tree, model = modelAOnRotatedData)
+
+fitModelAOnOriginalData <- PCMFit(
+   X = values, model = modelAOnOriginalData, tree = tree, metaI = PCMInfoCpp,
+  numGuessInitVecParams = 50000, numCallsOptim = 50)
+
+fitModelBOnOriginalData <- PCMFit(
+  X = values, model = bestModel, tree = tree, metaI = PCMInfoCpp,
+  numGuessInitVecParams = 50000, numCallsOptim = 50)
+
+fitModelAOnRotatedData <- PCMFit(
+  X = valuesPPRC, model = modelAOnRotatedData, tree = tree, metaI = PCMInfoCpp,
+  numGuessInitVecParams = 50000, numCallsOptim = 50)
+
+fitModelBOnRotatedData <- PCMFit(
+  X = valuesPPRC, model = rotatedModel, tree = tree, metaI = PCMInfoCpp,
+  numGuessInitVecParams = 50000, numCallsOptim = 50)
+
+logLik(fitModelAOnOriginalData)
+logLik(fitModelBOnOriginalData)
+logLik(fitModelAOnRotatedData)
+logLik(fitModelBOnRotatedData)
+
+AIC(fitModelAOnOriginalData)
+AIC(fitModelBOnOriginalData)
+AIC(fitModelAOnRotatedData)
+AIC(fitModelBOnRotatedData)
+```
+
+
+```{r}
+library(PCMBase)
+library(PCMFit)
+library(MGPMSimulations)
+library(ape)
+
+# id simulation for 
+id <- 41
+testData_t5_NULL[
+  id, 
+  list(
+    N = nobs, 
+    k = numTraits, p = df, 
+    `model-type` = LETTERS[1:6][unlist(mapping)],
+    `logLik(true model)` = unlist(logLik),
+    `AIC(true model)` = unlist(AIC))]
+
+# phylogeny
+tree <- testData_t5_NULL$treeWithRegimes[[id]]
+# number of tips in tree
+N <- PCMTreeNumTips(tree)
+
+# X: design matrix (each column vector corresponds to one trait)
+X <- t(testData_t5_NULL$X[[id]][, seq_len(N)])
+colnames(X) <- paste0("V", seq_len(ncol(X)))
+
+# True model B used to simulate the data
+trueModelOnOriginalData <- testData_t5_NULL$model[[id]]
+# number of traits
+k <- PCMNumTraits(trueModelOnOriginalData)
+
+# Best model found using the RCP algorithm
+bestModelOnOriginalData <- 
+  fits_MGPM_A_F_best_clade_2_RR_t5_NULL[IdGlob == id]$model[[1]]
+
+# matrix representation of the tree (using the vcv function from package ape)
+C <- vcv(tree)
+# column vector of N 1's
+one <- rep(1, N)
+
+# column vector b
+b <- as.vector(
+  t(solve(t(one) %*% solve(C) %*% one) %*% t(one) %*% solve(C) %*% X))
+# the R matrix
+R <- (N-1)^(-1) * t(X - one %*% t(b)) %*% solve(C) %*% (X - one %*% t(b))
+# the V matrix
+V <- eigen(R)$vectors
+
+# The pPC scores matrix
+S <- X %*% V - one %*% (t(b) %*% V)
+
+rotatedBestModelOnOriginalData <- bestModelOnOriginalData
+rotatedBestModelOnOriginalData$X0[] <-
+  rotatedBestModelOnOriginalData$X0[] %*% V - 1 %*% (t(b) %*% V)
+
+rotatedBestModelOnOriginalData$`1`$Sigma_x[,,1] <- 
+  chol(t(V)%*% rotatedBestModelOnOriginalData$`1`$Sigma_x[,,1] %*%
+         t(rotatedBestModelOnOriginalData$`1`$Sigma_x[,,1]) %*% V)
+
+modelAFromRotatedBestModelOnOriginalData <- MixedGaussian(
+  k = k, 
+  modelTypes = MGPMDefaultModelTypes(), 
+  mapping = c(`1`=2),
+  Sigmae_x = structure(
+    0, class = c("MatrixParameter", "_Omitted"), 
+    description = "Omitted upper triangular Choleski factor of the non-phylogenetic variance-covariance"))
+
+modelAFromRotatedBestModelOnOriginalData$X0[] <- 
+  rotatedBestModelOnOriginalData$X0
+
+diag(modelAFromRotatedBestModelOnOriginalData$`1`$Sigma_x[,,1]) <- 
+  diag(rotatedBestModelOnOriginalData$`1`$Sigma_x[,,1])
+
+PCMLik(X = t(X), tree = tree, model = bestModelOnOriginalData)
+PCMLik(X = t(S), tree = tree, model = rotatedBestModelOnOriginalData)
+PCMLik(X = t(S), tree = tree, model = modelAFromRotatedBestModelOnOriginalData)
+```
+
+
+```{r}
+
+```
