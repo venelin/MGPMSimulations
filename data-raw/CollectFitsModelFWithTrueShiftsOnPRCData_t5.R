@@ -15,6 +15,8 @@ fits_ModelFWithTrueShiftsOnPRCData_t5 <- rbindlist(
         cat("id:", id, "\n")
       }
 
+      dfModelF <- NA_integer_
+
       prefixFiles = paste0("FitModelFWithTrueShiftsOnPRCData_t5_id_", id)
       file <- paste0("Results_FitModelFWithTrueShiftsOnPRCData_t5/", prefixFiles,
                      "/FinalResult_", prefixFiles, ".RData")
@@ -22,6 +24,7 @@ fits_ModelFWithTrueShiftsOnPRCData_t5 <- rbindlist(
         load(file)
         fit_1 <- fit
         fitPRC_1 <- fitPRC
+        dfModelF <- PCMParamCount(fit_1$modelOptim)
       } else {
         fit_1 <- structure(list(0.0), class = "NAFIT")
         fitPRC_1 <- structure(list(0.0), class = "NAFIT")
@@ -33,9 +36,23 @@ fits_ModelFWithTrueShiftsOnPRCData_t5 <- rbindlist(
         load(file)
         fit_2 <- fit
         fitPRC_2 <- fitPRC
+        dfModelF <- PCMParamCount(fit_2$modelOptim)
       } else {
         fit_2 <- structure(list(0.0), class = "NAFIT")
         fitPRC_2 <- structure(list(0.0), class = "NAFIT")
+      }
+
+
+      file <- paste0("Results_FitModelFWithTrueShiftsOnPRCData_t5_3/", prefixFiles,
+                     "/FinalResult_", prefixFiles, ".RData")
+      if(file.exists(file)) {
+        load(file)
+        fit_3 <- fit
+        fitPRC_3 <- fitPRC
+        dfModelF <- PCMParamCount(fit_3$modelOptim)
+      } else {
+        fit_3 <- structure(list(0.0), class = "NAFIT")
+        fitPRC_3 <- structure(list(0.0), class = "NAFIT")
       }
 
       logLik.NAFIT <- AIC.NAFIT <- function(object, ...) as.double(NA)
@@ -49,7 +66,7 @@ fits_ModelFWithTrueShiftsOnPRCData_t5 <- rbindlist(
                     logLik = unlist(logLik),
                     nobs,
                     dfModel = sapply(model, PCMParamCount),
-                    dfModelF = if(is.null(fit_1$modelOptim)) NA else PCMParamCount(fit_1$modelOptim),
+                    dfModelF = dfModelF,
                     #model_1 = list(fit_1$modelOptim),
                     #modelPRC_1 = list(fitPRC_1$modelOptim),
                     #model_2 = list(fit_2$modelOptim),
@@ -57,7 +74,9 @@ fits_ModelFWithTrueShiftsOnPRCData_t5 <- rbindlist(
                     logLik_fit_1 = logLik(fit_1), AIC_fit_1 = AIC(fit_1),
                     logLik_fitPRC_1 = logLik(fitPRC_1), AIC_fitPRC_1 = AIC(fitPRC_1),
                     logLik_fit_2 = logLik(fit_2), AIC_fit_2 = AIC(fit_2),
-                    logLik_fitPRC_2 = logLik(fitPRC_2), AIC_fitPRC_2 = AIC(fitPRC_2))]
+                    logLik_fitPRC_2 = logLik(fitPRC_2), AIC_fitPRC_2 = AIC(fitPRC_2),
+                    logLik_fit_3 = logLik(fit_3), AIC_fit_3 = AIC(fit_3),
+                    logLik_fitPRC_3 = logLik(fitPRC_3), AIC_fitPRC_3 = AIC(fitPRC_3))]
     }))
 
 
