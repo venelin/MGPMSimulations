@@ -190,7 +190,7 @@ for(p in listPlots) {
 }
 ```
 
-```{r dtSimulationFits, eval = TRUE}
+```{r dtSimulationFits, eval = FALSE}
 dtSimulationFits <- rbindlist(list(
   fits_TrueModels_t5[
     , cbind(.SD, data.table(fitType2   =   "MGPM A-F TRUE MLE q=n.a."      ),
@@ -395,7 +395,7 @@ dtSimulationFits[, RegimeGroup:=factor(NumRegimes == 2, levels = c(TRUE, FALSE),
 usethis::use_data(dtSimulationFits, overwrite = TRUE)
 ```
 
-```{r dtFig, eval=TRUE}
+```{r dtFig, eval=FALSE}
 dtFig <- dtSimulationFits[
   IdGlob %in% testData_t5_fittedIds, 
   list(
@@ -757,7 +757,10 @@ plTop <- cowplot::plot_grid(
 cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
 ```
 
-```{r fig-perfOU-1-4, fig.width=9, fig.height=9, eval=TRUE}
+
+
+
+```{r fig-perfOU-1-4, fig.width=9, fig.height=9, eval=FALSE}
 treeSizes <- c("N=80", "N=159", "N=318", "N=638")
 
 fitTypes80 <- c(
@@ -790,7 +793,7 @@ plTop <- cowplot::plot_grid(
 cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
 ```
 
-```{r fig-perfOU-5-8, fig.width=9, fig.height=9, eval=TRUE}
+```{r fig-perfOU-5-8, fig.width=9, fig.height=9, eval=FALSE}
 treeSizes <- c("N=80", "N=159", "N=318", "N=638")
 
 fitTypes80 <- c(
@@ -823,8 +826,7 @@ plTop <- cowplot::plot_grid(
 cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
 ```
 
-
-```{r fig-perfCorrelated-1-4, fig.width=9, fig.height=9, eval=TRUE}
+```{r fig-perfCorrelated-1-4, fig.width=9, fig.height=9, eval=FALSE}
 treeSizes <- c("N=80", "N=159", "N=318", "N=638")
 
 fitTypes80 <- c(
@@ -857,7 +859,7 @@ plTop <- cowplot::plot_grid(
 cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
 ```
 
-```{r fig-perfCorrelated-5-8, fig.width=9, fig.height=9, eval=TRUE}
+```{r fig-perfCorrelated-5-8, fig.width=9, fig.height=9, eval=FALSE}
 treeSizes <- c("N=80", "N=159", "N=318", "N=638")
 
 fitTypes80 <- c(
@@ -890,7 +892,7 @@ plTop <- cowplot::plot_grid(
 cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
 ```
 
-```{r fig-perfNonDiagonalH-1-4, fig.width=9, fig.height=9, eval=TRUE}
+```{r fig-perfNonDiagonalH-1-4, fig.width=9, fig.height=9, eval=FALSE}
 treeSizes <- c("N=80", "N=159", "N=318", "N=638")
 
 fitTypes80 <- c(
@@ -923,7 +925,7 @@ plTop <- cowplot::plot_grid(
 cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
 ```
 
-```{r fig-perfNonDiagonalH-5-8, fig.width=9, fig.height=9, eval=TRUE}
+```{r fig-perfNonDiagonalH-5-8, fig.width=9, fig.height=9, eval=FALSE}
 treeSizes <- c("N=80", "N=159", "N=318", "N=638")
 
 fitTypes80 <- c(
@@ -956,7 +958,7 @@ plTop <- cowplot::plot_grid(
 cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
 ```
 
-```{r fig-perfAsymmetricH-1-4, fig.width=9, fig.height=9, eval=TRUE}
+```{r fig-perfAsymmetricH-1-4, fig.width=9, fig.height=9, eval=FALSE}
 treeSizes <- c("N=80", "N=159", "N=318", "N=638")
 
 fitTypes80 <- c(
@@ -989,7 +991,7 @@ plTop <- cowplot::plot_grid(
 cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
 ```
 
-```{r fig-perfAsymmetricH-5-8, fig.width=9, fig.height=9, eval=TRUE}
+```{r fig-perfAsymmetricH-5-8, fig.width=9, fig.height=9, eval=FALSE}
 treeSizes <- c("N=80", "N=159", "N=318", "N=638")
 
 fitTypes80 <- c(
@@ -1027,16 +1029,18 @@ cowplot::plot_grid(plTop, legend, ncol = 1, rel_heights = c(6, 1))
 options(digits=2)
 ```
 
-```{r}
-dtSimulationFits[
-  , summary(lm(dMahalanobis~fitType))]
-dtSimulationFits[
+```{r, echo=TRUE}
+dtSimulationFits[TreeSize == "N=80"
+  , summary(lm(deltaScore~fitType))]
+dtSimulationFits[TreeSize == "N=80"
   , summary(lm(dBhattacharyya~fitType))]
-dtSimulationFits[
+dtSimulationFits[TreeSize == "N=80"
+  , summary(lm(dMahalanobis~fitType))]
+dtSimulationFits[TreeSize == "N=80"
   , summary(lm(deltaNumRegimes~ fitType))]
-dtSimulationFits[
+dtSimulationFits[TreeSize == "N=80"
   , summary(lm(perf_Cluster_tpr~fitType ))]
-dtSimulationFits[
+dtSimulationFits[TreeSize == "N=80"
   , summary(lm(perf_Cluster_fpr~fitType))]
 ```
 
