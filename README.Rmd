@@ -1,5 +1,6 @@
 ---
 output: github_document
+bibliography: vignettes/REFERENCES.bib
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -14,39 +15,29 @@ knitr::opts_chunk$set(
 ```
 # MGPMSimulations
 
-The package MGPMSimulations contains all scripts and data that have been created or generated for the simulation-based study in the article "Automatic Generation of Evolutionary Hypotheses using Mixed Gaussian Phylogenetic Models". Due to size constraints, this R-package is not intended for a release on CRAN. Instead, the readers of the article are encouraged to install or clone the package from its code-repository (currently github). 
+The package MGPMSimulations contains all scripts and simulated data that have been created or generated for the simulation-based study in the research article [@Mitov:2019a] (see References).
 
 ## Installation
 
-This package contains large data files and is not intended for release on CRAN. The recommended way to use this package is to follow these steps:
+The easiest way to install this package is to use the function `install_github()` from the R-package devtools. The following command will install the most up-to-date version of the master branch from the github repository of the package. 
 
-* Clone the package repository from github using the command (type the following three commands in your terminal / shell):
-```
-git clone https://github.com/venelin/MGPMSimulations.git
-```
-
-* Enable git large file system (LFS) in your working copy:
-```
-git lfs install
+```{r, eval=FALSE}
+devtools::install_github("venelin/MGPMSimulations")
 ```
 
-* Pull the binary data from the LFS
-```
-git pull
+## License 
+
+The package MGPMSimulations is distributed under the terms of the 
+[Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/legalcode) license. 
+
+## Citing MGPMSimulations
+Please, read the following:
+```{r}
+print(citation("MGPMSimulations"), bibtex = TRUE)
 ```
 
-* [optional: This step is only needed if you need to inspect the row result-files from the MGPM simulations.] Concatenate the binary files ResultsDirs.tar.gz.part* into one file. This binary file was split in parts using the command (`split -b 1400m ResultsDirs.tar.gz "ResultsDirs.tar.gz.part"`):
-```
-cat ResultsDirs.tar.gz.parta* > ResultsDirs.tar.gz
-```
+## Further information
+For additional information about the data objects and scripts in the package, read [SI Appendix, Sections I,J,L.2 and L.3](https://www.pnas.org/lookup/suppl/doi:10.1073/pnas.1813823116/-/DCSupplemental) from [@Mitov:2019a].
 
-* * [optional: This step is only needed if you need to inspect the row result-files from the MGPM simulations.] Decompress ResultsDirs.tar.gz:
-```
-tar -zxvf ResultsDirs.tar.gz
-```
-
-* Install the package from your local working copy (type the following command in your R interpreter). Note that the directory MGPMMammals should be in your current directory from which R is running:
-```{r, eval = FALSE}
-install.packages("MGPMSimulations", repos=NULL, type="source")
-```
+# References
 

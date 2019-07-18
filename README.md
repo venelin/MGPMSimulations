@@ -1,37 +1,75 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-MGPMSimulations
-===============
 
-The package MGPMSimulations contains all scripts and data that have been created or generated for the simulation-based study in the article "Automatic Generation of Evolutionary Hypotheses using Mixed Gaussian Phylogenetic Models". Due to size constraints, this R-package is not intended for a release on CRAN. Instead, the readers of the article are encouraged to install or clone the package from its code-repository (currently github).
+# MGPMSimulations
 
-Installation
-------------
+The package MGPMSimulations contains all scripts and simulated data that
+have been created or generated for the simulation-based study in the
+research article (Mitov, Bartoszek, and Stadler 2019) (see References).
 
-This package contains large data files and is not intended for release on CRAN. The recommended way to use this package is to follow these steps:
+## Installation
 
--   Clone the package repository from github using the command (type the following three commands in your terminal / shell):
-
-        git clone https://github.com/venelin/MGPMSimulations.git
-
--   Enable git large file system (LFS) in your working copy:
-
-        git lfs install
-
--   Pull the binary data from the LFS
-
-        git pull
-
--   \[optional: This step is only needed if you need to inspect the row result-files from the MGPM simulations.\] Concatenate the binary files ResultsDirs.tar.gz.part\* into one file. This binary file was split in parts using the command (`split -b 1400m ResultsDirs.tar.gz "ResultsDirs.tar.gz.part"`):
-
-        cat ResultsDirs.tar.gz.parta* > ResultsDirs.tar.gz
-
--   -   \[optional: This step is only needed if you need to inspect the row result-files from the MGPM simulations.\] Decompress ResultsDirs.tar.gz:
-
-            tar -zxvf ResultsDirs.tar.gz
-
--   Install the package from your local working copy (type the following command in your R interpreter). Note that the directory MGPMMammals should be in your current directory from which R is running:
+The easiest way to install this package is to use the function
+`install_github()` from the R-package devtools. The following command
+will install the most up-to-date version of the master branch from the
+github repository of the package.
 
 ``` r
-install.packages("MGPMSimulations", repos=NULL, type="source")
+devtools::install_github("venelin/MGPMSimulations")
 ```
+
+## License
+
+The package MGPMSimulations is distributed under the terms of the
+[Creative Commons Attribution 4.0 International License (CC
+BY 4.0)](https://creativecommons.org/licenses/by/4.0/legalcode) license.
+
+## Citing MGPMSimulations
+
+Please, read the following:
+
+``` r
+print(citation("MGPMSimulations"), bibtex = TRUE)
+#> 
+#> If you use code or data from MGPMSimulations in a publication,
+#> please cite the article:
+#> 
+#>   Mitov, V., Bartoszek, K., & Stadler, T. (2019). Automatic
+#>   generation of evolutionary hypotheses using mixed Gaussian
+#>   phylogenetic models. Proceedings of the National Academy of
+#>   Sciences of the United States of America,
+#>   http://doi.org/10.1073/pnas.1813823116
+#> 
+#> A BibTeX entry for LaTeX users is
+#> 
+#>   @Article{,
+#>     title = {Automatic generation of evolutionary hypotheses using mixed Gaussian phylogenetic models},
+#>     author = {Venelin Mitov and Krzysztof Bartoszek and Tanja Stadler},
+#>     journal = {Proceedings of the National Academy of Sciences of the United States of America},
+#>     year = {2019},
+#>     url = {https://www.pnas.org/lookup/doi/10.1073/pnas.1813823116},
+#>   }
+```
+
+## Further information
+
+For additional information about the data objects and scripts in the
+package, read [SI Appendix, Sections I,J,L.2 and
+L.3](https://www.pnas.org/lookup/suppl/doi:10.1073/pnas.1813823116/-/DCSupplemental)
+from (Mitov, Bartoszek, and Stadler 2019).
+
+# References
+
+<div id="refs" class="references">
+
+<div id="ref-Mitov:2019a">
+
+Mitov, Venelin, Krzysztof Bartoszek, and Tanja Stadler. 2019. “Automatic
+Generation of Evolutionary Hypotheses Using Mixed Gaussian Phylogenetic
+Models.” *Proceedings of the National Academy of Sciences of the United
+States of America*.
+<https://www.pnas.org/lookup/doi/10.1073/pnas.1813823116>.
+
+</div>
+
+</div>
